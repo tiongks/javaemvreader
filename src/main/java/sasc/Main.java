@@ -17,13 +17,16 @@ package sasc;
 
 import sasc.smartcard.common.APDURunner;
 import sasc.smartcard.common.CardExplorer;
+
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.GnuParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
+import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+
 import sasc.terminal.Terminal;
 import sasc.terminal.TerminalAPIManager;
 import sasc.terminal.TerminalException;
@@ -53,6 +56,7 @@ public class Main {
         boolean noGUI = Boolean.getBoolean("java.awt.headless");
         boolean emulate = false;
         boolean listTerminals = false;
+        boolean readAPDUSFromFile = false;
         String commandFilename = null;
 
         //Commons CLI
@@ -64,10 +68,10 @@ public class Main {
         Option listTerminalsOption = new Option(LIST_TERMINALS, "list all available terminals");
         Option terminalOption = new Option(TERMINAL, "the name of the terminal to use");
         Option verboseOption = new Option(VERBOSE, "print debug messages");
-        Option commandFileOption = new Option(COMMAND_FILE, "execute APDU commands from file");
-
+        Option commandFileOption = OptionBuilder.withArgName("file name").hasArg().
+        		withDescription("execute APDU commands from file").create(COMMAND_FILE);
+        
         Options options = new Options();
-
         options.addOption(helpOption);
         options.addOption(noGUIOption);
         options.addOption(emulateOption);
@@ -101,8 +105,9 @@ public class Main {
             if (line.hasOption(VERBOSE)) {
                 Log.setLevel(Log.Level.DEBUG);
             }
-            if (line.hasOption(COMMAND_FILE) && line.getOptionValue(COMMAND_FILE) != null) {
+            if (line.hasOption(COMMAND_FILE)) {
                 commandFilename = line.getOptionValue(COMMAND_FILE);
+            	readAPDUSFromFile = true;
             }
         } catch (ParseException ex) {
             // oops, something went wrong
@@ -137,7 +142,7 @@ public class Main {
 
         if (noGUI) {
             //No Swing/GUI
-            if (commandFilename != null) {
+            if (readAPDUSFromFile) {
                 try {
                     new APDURunner(commandFilename).start();
                 } catch (Exception e) {

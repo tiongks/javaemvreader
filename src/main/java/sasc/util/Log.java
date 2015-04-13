@@ -60,6 +60,10 @@ public class Log {
     public static void resetStepNo(){
         stepNo.set(1);
     }
+    
+    public static void trace(String msg) {
+    	logInternal("TRACE: " + msg, Level.TRACE);
+    }
 
     public static void debug(String msg) {
         logInternal("DEBUG: " + msg, Level.DEBUG);

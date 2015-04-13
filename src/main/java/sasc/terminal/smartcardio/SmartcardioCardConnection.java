@@ -55,7 +55,7 @@ public class SmartcardioCardConnection implements CardConnection, Terminal {
             throw new IllegalArgumentException("APDU must be at least 4 bytes long: " + cmd.length);
         }
 
-        Log.debug("cmd bytes: " + Util.prettyPrintHexNoWrap(cmd));
+        Log.trace("cmd bytes: " + Util.prettyPrintHexNoWrap(cmd));
 
         /*
          * case 1 : |CLA|INS|P1 |P2 |                    len = 4 
@@ -90,7 +90,7 @@ public class SmartcardioCardConnection implements CardConnection, Terminal {
         //Find the 'case' and print to Log 
         if (cmd.length == 4) { //Case 1 (EMV doesn't use this)
             commandAPDU = new CommandAPDU(cmd);
-            Log.debug("APDU case 1");
+            Log.trace("APDU case 1");
         } else if (cmd.length == 5) { //Case 2s
             commandAPDU = new CommandAPDU(
                     Util.byteToInt(cmd[0]),
@@ -98,7 +98,7 @@ public class SmartcardioCardConnection implements CardConnection, Terminal {
                     Util.byteToInt(cmd[2]),
                     Util.byteToInt(cmd[3]),
                     (cmd[4] == 0x00 ? 256 : Util.byteToInt(cmd[4])));
-            Log.debug("APDU case 2");
+            Log.trace("APDU case 2");
         } else if (cmd.length == (5 + Util.byteToInt(cmd[4]))) { //Case 3s
 //            if("T=1".equalsIgnoreCase(card.getProtocol())){
 //                //Add Le to end of command
@@ -110,7 +110,7 @@ public class SmartcardioCardConnection implements CardConnection, Terminal {
 //                Log.debug("APDU was case 3 but changed to case 4: "+commandAPDU);
 //            }else{
             commandAPDU = new CommandAPDU(cmd);
-            Log.debug("APDU case 3");
+            Log.trace("APDU case 3");
 //            }
         } else if (cmd.length == (5 + Util.byteToInt(cmd[4]) + 1)) { //Case 4s
             byte[] data = new byte[Util.byteToInt(cmd[4])];
@@ -125,7 +125,7 @@ public class SmartcardioCardConnection implements CardConnection, Terminal {
                     0, //dataOffset
                     data.length,
                     (le == 0 ? 256 : le));
-            Log.debug("APDU case 4");
+            Log.trace("APDU case 4");
         } else {
             //Might be extended length
             throw new IllegalArgumentException("Unsupported APDU format: " + Util.prettyPrintHexNoWrap(cmd));
@@ -137,6 +137,9 @@ public class SmartcardioCardConnection implements CardConnection, Terminal {
             byte sw2 = (byte) apdu.getSW2();
             byte[] data = apdu.getData(); //Copy
             response = new CardResponseImpl(data, sw1, sw2, (short) apdu.getSW());
+            if (response.getData() != null && response.getData().length > 0) {
+            	Log.debug("ResponseAPDU (" + Util.prettyPrintHexNoWrap(response.getData()) + ")");
+            }
         } catch (CardException ce) {
             //if PCSCException: reflect to get error code
             //http://www.java2s.com/Open-Source/Java/6.0-JDK-Modules-sun/security/sun/security/smartcardio/PCSC.java.htm

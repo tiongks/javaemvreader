@@ -15,27 +15,24 @@
  */
 package sasc.emv;
 
-import sasc.iso7816.ShortFileIdentifier;
-import sasc.smartcard.common.SmartCard;
-import sasc.iso7816.TagValueType;
-import sasc.iso7816.TagAndLength;
-import sasc.iso7816.Tag;
-import sasc.util.Log;
-import sasc.iso7816.SmartCardException;
-import sasc.iso7816.BERTLV;
-import sasc.iso7816.AID;
+import static sasc.util.Log.COMMAND_HEADER_FRAMING;
+
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.util.ArrayList;
-import java.util.List;
+
 import sasc.emv.system.visa.VISATags;
-import sasc.iso7816.ATR;
+import sasc.iso7816.AID;
+import sasc.iso7816.BERTLV;
+import sasc.iso7816.ShortFileIdentifier;
+import sasc.iso7816.SmartCardException;
 import sasc.iso7816.TLVException;
 import sasc.iso7816.TLVUtil;
+import sasc.iso7816.Tag;
+import sasc.smartcard.common.SmartCard;
+import sasc.terminal.CardConnection;
 import sasc.terminal.CardResponse;
 import sasc.terminal.TerminalException;
-import sasc.terminal.CardConnection;
-import static sasc.util.Log.COMMAND_HEADER_FRAMING;
+import sasc.util.Log;
+import sasc.util.Log.Level;
 import sasc.util.Util;
 
 /**
@@ -71,7 +68,7 @@ public class EMVUtil {
     //TODO move this to generic ISO7816 routine?
     private static CardResponse sendCmdInternal(CardConnection terminal, byte[] cmd, boolean doParseTLVData) throws TerminalException {
         byte[] cmdBytes = checkAndAddLeIfMissing(cmd);
-        Log.command(Util.prettyPrintHex(cmdBytes));
+        Log.trace(Util.prettyPrintHex(cmdBytes));
         long startTime = System.nanoTime();
         CardResponse response = terminal.transmit(cmdBytes);
 
@@ -81,17 +78,17 @@ public class EMVUtil {
         byte sw1 = (byte) response.getSW1();
         byte sw2 = (byte) response.getSW2();
         byte[] data = response.getData(); //Copy
-        Log.debug("Received data+SW1+SW2: " + Util.byteArrayToHexString(data) + " " + Util.byte2Hex(sw1) + " " + Util.byte2Hex((byte) sw2));
-        Log.debug("data.length: 0x"+Util.int2Hex(data.length) + " ("+data.length+")");
+        Log.trace("Received data+SW1+SW2: " + Util.byteArrayToHexString(data) + " " + Util.byte2Hex(sw1) + " " + Util.byte2Hex((byte) sw2));
+        Log.trace("data.length: 0x"+Util.int2Hex(data.length) + " ("+data.length+")");
         if (sw1 == (byte) 0x6c) { //"Wrong length" (resend last command with correct length)
             //Re-issue command with correct length
             cmdBytes[4] = sw2;
-            Log.procedureByte("Received procedure byte SW1=0x6c. Re-issuing command with correct length (" + Util.byte2Hex(sw2)+"): "+ Util.byteArrayToHexString(cmdBytes));
+            Log.trace("Received procedure byte SW1=0x6c. Re-issuing command with correct length (" + Util.byte2Hex(sw2)+"): "+ Util.byteArrayToHexString(cmdBytes));
             response = terminal.transmit(cmdBytes);
             sw1 = (byte) response.getSW1();
             sw2 = (byte) response.getSW2();
             data = response.getData(); //Copy
-            Log.procedureByte("Received data+SW1+SW2: " + Util.byteArrayToHexString(data) + " " + Util.byte2Hex(sw1) + " " + Util.byte2Hex(sw2));
+            Log.trace("Received data+SW1+SW2: " + Util.byteArrayToHexString(data) + " " + Util.byte2Hex(sw1) + " " + Util.byte2Hex(sw2));
         }
 
         //Note some non-EMV cards (and terminal software) seem to re-issue the last command with length=SW2 when getting SW1=61
@@ -103,7 +100,7 @@ public class EMVUtil {
             }else{
                 cmdBytes = new byte[]{cmdBytes[0], (byte) 0xC0, (byte) 0x00, (byte) 0x00, (byte) sw2};
             }
-            Log.procedureByte("Received procedure byte SW1=0x61. Sending GET RESPONSE command: " + Util.byteArrayToHexString(cmdBytes));
+            Log.trace("Received procedure byte SW1=0x61. Sending GET RESPONSE command: " + Util.byteArrayToHexString(cmdBytes));
             response = terminal.transmit(cmdBytes);
             byte[] newData = response.getData();
             byte[] tmpData = new byte[data.length + newData.length];
@@ -111,13 +108,15 @@ public class EMVUtil {
             System.arraycopy(newData, 0, tmpData, data.length, newData.length);
             sw1 = (byte) response.getSW1();
             sw2 = (byte) response.getSW2();
-            Log.procedureByte("Received newData+SW1+SW2: " + Util.byteArrayToHexString(newData) + " " + Util.byte2Hex(sw1) + " " + Util.byte2Hex(sw2));
+            Log.trace("Received newData+SW1+SW2: " + Util.byteArrayToHexString(newData) + " " + Util.byte2Hex(sw1) + " " + Util.byte2Hex(sw2));
             data = tmpData;
         }
 
 
         long endTime = System.nanoTime();
-        printResponse(response, doParseTLVData);
+        if (Log.getLevel() == Level.TRACE) {
+        	printResponse(response, doParseTLVData);
+        }
         Log.debug("Time: " + Util.getFormattedNanoTime(endTime - startTime));
         return response;
     }
@@ -182,7 +181,7 @@ public class EMVUtil {
         Log.info("response ascii  : " + Util.getSafePrintChars(data));
         if (doParseTLVData) {
             try{
-                Log.info("response parsed :\n" + TLVUtil.prettyPrintAPDUResponse(data));
+                Log.info("respOonse parsed :\n" + TLVUtil.prettyPrintAPDUResponse(data));
             }catch(TLVException ex){
                 Log.debug(ex.getMessage()); //Util.getStackTrace(ex)
             }
