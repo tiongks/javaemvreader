@@ -15,6 +15,7 @@
  */
 package sasc;
 
+import sasc.smartcard.common.APDURunner;
 import sasc.smartcard.common.CardExplorer;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -27,12 +28,21 @@ import sasc.terminal.Terminal;
 import sasc.terminal.TerminalAPIManager;
 import sasc.terminal.TerminalException;
 import sasc.terminal.TerminalProvider;
+import sasc.util.Log;
 
 /**
  *
  * @author sasc
  */
 public class Main {
+
+    public static final String COMMAND_FILE = "commandFile";
+    public static final String VERBOSE = "verbose";
+    public static final String TERMINAL = "terminal";
+    public static final String EMULATE = "emulate";
+    public static final String NO_GUI = "noGUI";
+    public static final String HELP = "help";
+    public static final String LIST_TERMINALS = "listTerminals";
 
     /**
      * @param args the command line arguments
@@ -43,17 +53,18 @@ public class Main {
         boolean noGUI = Boolean.getBoolean("java.awt.headless");
         boolean emulate = false;
         boolean listTerminals = false;
-        boolean verbose = false;
+        String commandFilename = null;
 
         //Commons CLI
         //http://commons.apache.org/cli/usage.html
 
-        Option helpOption = new Option("help", "print this message");
-        Option noGUIOption = new Option("noGUI", "use command line version");
-        Option emulateOption = new Option("emulate", "emulate communication with an EMV card");
-        Option listTerminalsOption = new Option("listTerminals", "list all available terminals");
-        Option terminalOption = new Option("terminal", "the name of the terminal to use");
-        Option verboseOption = new Option("verbose", "print debug messages");
+        Option helpOption = new Option(HELP, "print this message");
+        Option noGUIOption = new Option(NO_GUI, "use command line version");
+        Option emulateOption = new Option(EMULATE, "emulate communication with an EMV card");
+        Option listTerminalsOption = new Option(LIST_TERMINALS, "list all available terminals");
+        Option terminalOption = new Option(TERMINAL, "the name of the terminal to use");
+        Option verboseOption = new Option(VERBOSE, "print debug messages");
+        Option commandFileOption = new Option(COMMAND_FILE, "execute APDU commands from file");
 
         Options options = new Options();
 
@@ -63,6 +74,7 @@ public class Main {
         options.addOption(listTerminalsOption);
         options.addOption(terminalOption);
         options.addOption(verboseOption);
+        options.addOption(commandFileOption);
 
         // create the cmd line parser
         CommandLineParser parser = new GnuParser();
@@ -70,24 +82,27 @@ public class Main {
             // parse the command line arguments
             CommandLine line = parser.parse(options, args);
 
-            if (line.hasOption("help")) {
+            if (line.hasOption(HELP)) {
                 // automatically generate the help statement
                 HelpFormatter formatter = new HelpFormatter();
                 formatter.printHelp("BLABLA", options, true);
                 System.exit(0);
             }
-            if (line.hasOption("listTerminals")) {
+            if (line.hasOption(LIST_TERMINALS)) {
                 listTerminals = true;
             }
 
-            if (line.hasOption("noGUI")) {
+            if (line.hasOption(NO_GUI)) {
                 noGUI = true;
             }
-            if (line.hasOption("emulate")) {
+            if (line.hasOption(EMULATE)) {
                 emulate = true;
             }
-            if (line.hasOption("verbose")) {
-                verbose = true;
+            if (line.hasOption(VERBOSE)) {
+                Log.setLevel(Log.Level.DEBUG);
+            }
+            if (line.hasOption(COMMAND_FILE) && line.getOptionValue(COMMAND_FILE) != null) {
+                commandFilename = line.getOptionValue(COMMAND_FILE);
             }
         } catch (ParseException ex) {
             // oops, something went wrong
@@ -122,7 +137,15 @@ public class Main {
 
         if (noGUI) {
             //No Swing/GUI
-            new CardExplorer().start();
+            if (commandFilename != null) {
+                try {
+                    new APDURunner(commandFilename).start();
+                } catch (Exception e) {
+                    System.out.print("Unable to run APDUs: " + e.getMessage());
+                }
+            } else {
+                new CardExplorer().start();
+            }
         } else {
             // Create swing app using appframework
             // http://java.dzone.com/news/jsr-296-end-jframe
