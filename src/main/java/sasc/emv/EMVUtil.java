@@ -45,7 +45,7 @@ public class EMVUtil {
      * No response parsing
      *
      * @param terminal
-     * @param command
+     * @param cmd
      * @return
      * @throws TerminalException
      */

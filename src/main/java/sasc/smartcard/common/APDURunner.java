@@ -45,7 +45,7 @@ public class APDURunner {
                 CardResponse response = EMVUtil.sendCmd(cardConnection, apdu);
             }
             long endTime = System.currentTimeMillis();
-            Log.debug("Execution time: " + (endTime - startTime) + "ms");
+            Log.debug("Total Execution time: " + (endTime - startTime) + "ms");
             cardConnection.disconnect(true);
         } catch (TerminalException e) {
             e.printStackTrace();
